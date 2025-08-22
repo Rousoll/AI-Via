@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI-Via Traffic Dashboard</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <h1>AI-Via Traffic Dashboard</h1>
+
+  <!-- Live Stats Section -->
+  <div class="stats-section">
+    <p>Last update: <span id="last-update"></span></p>
+    <p>Total Vehicles: <span id="total-vehicles">0</span></p>
+    <p>Emergency Vehicles: <span id="emergency-vehicles">0</span></p>
+    <p>Other Vehicles: <span id="other-vehicles">0</span></p>
+    <div id="alerts-container"></div>
+  </div>
+
+  <!-- Upload Section -->
+  <div class="upload-section">
+    <input type="file" id="image-upload">
+    <button id="upload-btn">Upload & Predict</button>
+    <div id="upload-result"></div>
+    <img id="predicted-image" style="display:none; max-width:300px;">
+    <div id="prediction-details">
+      Total: <span id="pred-total-vehicles">0</span>,
+      Emergency: <span id="pred-emergency-vehicles">0</span>,
+      Other: <span id="pred-other-vehicles">0</span>
+    </div>
+  </div>
+
+  <!-- Smart Simulation Display -->
+  <h2>Smart Traffic Light Simulation</h2>
+  <div id="traffic-sim-container" style="display:flex; gap:20px;">
+    <div id="signal1" class="traffic-light">
+      <p>Signal 1</p>
+      <img id="signal1_img" width="150" />
+    </div>
+    <div id="signal2" class="traffic-light">
+      <p>Signal 2</p>
+      <img id="signal2_img" width="150" />
+    </div>
+    <div id="signal3" class="traffic-light">
+      <p>Signal 3</p>
+      <img id="signal3_img" width="150" />
+    </div>
+    <div id="signal4" class="traffic-light">
+      <p>Signal 4</p>
+      <img id="signal4_img" width="150" />
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>

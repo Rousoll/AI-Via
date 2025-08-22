@@ -1,0 +1,6 @@
+train: datasets/train/images
+val: datasets/valid/images
+test: datasets/test/images
+
+nc: 6
+names: ['ambulance', 'bus', 'car', 'fire', 'police', 'truck']
