@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI‑Via • Traffic Management Dashboard</title>
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js for simple charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0b0f1a;
+  --card:#0f1524;
+  --muted:#94a3b8;
+  --text:#e2e8f0;
+  --accent:#38bdf8;
+  --accent-2:#22d3ee;
+  --ok:#10b981;
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+  --radius:20px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin:0;
+  height:100%;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 600px at 20% -10%, rgba(56,189,248,.07), transparent 60%),
+              radial-gradient(900px 500px at 120% 20%, rgba(34,211,238,.06), transparent 60%),
+              var(--bg);
+  scroll-behavior: smooth;
+}
+
+/* header */
+header {
+  position: sticky; top: 0;
+  z-index: 50;
+  backdrop-filter: saturate(140%) blur(8px);
+  background: linear-gradient(180deg, rgba(11,15,26,.8), rgba(11,15,26,.6));
+  border-bottom: 1px solid rgba(148,163,184,.1);
+}
+
+.wrap { max-width:1200px; margin:0 auto; padding:22px 20px; }
+.brand { display:flex; align-items:center; gap:14px; }
+.brand .dot { width:12px; height:12px; border-radius:50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow:0 0 18px rgba(56,189,248,.8); }
+h1 { font-weight:800; font-size:22px; margin:0; letter-spacing:.2px; }
+
+/* dashboard grid */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 18px;
+  padding-bottom: 20px;
+}
+
+/* analytics row: two columns */
+.analytics-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* two equal columns */
+  gap: 18px; /* space between the two cards */
+  grid-column: span 12; /* full width in the main dashboard grid */
+}
+
+/* cards */
+.card {
+  background: linear-gradient(180deg, rgba(15,21,36,1), rgba(15,21,36,.94));
+  border: 1px solid rgba(148,163,184,.12);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card .hd {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:16px 18px; border-bottom:1px solid rgba(148,163,184,.08);
+}
+
+.card .hd h2 { font-size:15px; font-weight:700; margin:0; letter-spacing:.3px; }
+
+.card .bd {
+  padding:16px 18px;
+  overflow-y: auto;
+  max-height: 300px; /* limit height per card */
+}
+
+/* pills */
+.pill { font-size:12px; padding:4px 10px; border-radius:999px; color:#0b1220; background:linear-gradient(135deg,var(--accent),var(--accent-2)); font-weight:700; }
+
+/* grid placements */
+.c-analytics{ /* now handled by analytics-row */ }
+.c-recent{ /* now handled by analytics-row */ }
+.c-counts{grid-column: span 4}
+.c-sim{grid-column: span 7}
+.c-upload{grid-column: span 3}
+.c-wait{grid-column: span 2}
+.c-time{grid-column: span 3}
+.c-emg{grid-column: span 3}
+.c-logs{grid-column: span 5}
+.c-live{grid-column: span 7}
+.c-diag{grid-column: span 12}
+
+/* scrollable sections inside cards */
+.ticker, .drop, .c-logs .bd, .c-sim .bd, .c-live .bd {
+  overflow-y: auto;
+  max-height: 200px; /* adjust for each card type */
+}
+
+/* traffic lights */
+.lights { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.light { display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:16px; background:rgba(148,163,184,.05); border:1px solid rgba(148,163,184,.1); }
+.light .status { display:flex; align-items:center; gap:10px; font-weight:700 }
+.bulb { width:12px; height:12px; border-radius:50%; box-shadow:0 0 0 2px rgba(0,0,0,.2) inset; }
+.bulb.green { background: radial-gradient(circle at 30% 30%, #bbf7d0, var(--ok)); box-shadow:0 0 16px 2px rgba(16,185,129,.7); }
+.bulb.red { background: radial-gradient(circle at 30% 30%, #fecaca, var(--danger)); box-shadow:0 0 16px 2px rgba(239,68,68,.7); }
+.bulb.yellow { background: radial-gradient(circle at 30% 30%, #fde68a, var(--warn)); box-shadow:0 0 16px 2px rgba(245,158,11,.7); }
+.meter { height:8px; width:100%; background:rgba(148,163,184,.17); border-radius:999px; overflow:hidden; }
+.meter>span { display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .3s ease }
+
+/* buttons */
+.btn { appearance:none; border:0; background: linear-gradient(90deg,var(--accent),var(--accent-2)); color:#0b1220; padding:10px 14px; border-radius:12px; font-weight:800; cursor:pointer; }
+.btn:disabled { opacity:.6; cursor:not-allowed; }
+
+/* diagnostics */
+.tests { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.test { padding:10px 12px; border-radius:12px; background:rgba(148,163,184,.06); border:1px solid rgba(148,163,184,.1); display:flex; align-items:center; justify-content:space-between; }
+.badge { font-size:12px; font-weight:800; padding:4px 8px; border-radius:999px; }
+.pass { background:linear-gradient(135deg, var(--ok), #34d399); color:#0b1220; }
+.fail { background:linear-gradient(135deg, var(--danger), #f87171); color:#0b1220; }
+
+/* responsive */
+@media (max-width: 1060px){
+  .analytics-row { grid-template-columns: 1fr; } /* stack analytics on small screens */
+  .c-counts,.c-sim,.c-upload,.c-wait,.c-time,.c-emg,.c-logs,.c-live,.c-diag{grid-column:span 12}
+  .tests { grid-template-columns:1fr }
+}
+</style>
+
+
+</head>
+<body>
+  <header>
+    <div class="wrap" style="display:flex; align-items:center; justify-content:space-between; gap:14px">
+      <div class="brand"><span class="dot"></span> <h1>AI‑Via • Traffic Management Dashboard</h1></div>
+      <div class="pill" id="status-pill">Connecting…</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid">
+
+      <!-- Traffic analytics -->
+      <article class="card c-analytics">
+        <div class="hd"><h2>Traffic analytics</h2><span class="pill" id="trafficFlowPill">—</span></div>
+        <div class="bd">
+          <canvas id="analyticsChart" height="120"></canvas>
+          <div style="margin-top:10px; font-size:13px; color:var(--muted)">Avg speed: <strong id="avgSpeed">—</strong> km/h • Flow: <strong id="trafficFlow">—</strong> vph</div>
+        </div>
+      </article>
+
+      <!-- Recent intersection detection -->
+      <article class="card c-recent">
+        <div class="hd"><h2>Recent Intersection Detection</h2><span class="pill" id="recentId">—</span></div>
+        <div class="bd">
+          <canvas id="countsChart" height="120"></canvas>
+          <div style="margin-top:10px; font-size:13px; color:var(--muted)">Total vehicles detected: <strong id="recentVehicles">—</strong></div>
+        </div>
+      </article>
+
+      <!-- Number of cars, ambulances, police, fire -->
+      <article class="card c-counts">
+        <div class="hd"><h2>Vehicle mix</h2><span class="pill">Live</span></div>
+        <div class="bd">
+          <ul id="mixList" style="list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,1fr); gap:10px; font-weight:700"></ul>
+        </div>
+      </article>
+
+      <!-- Live Simulation of 1 intersection 4 traffic lights -->
+      <article class="card c-sim">
+        <div class="hd"><h2>Live Simulation • 1 intersection / 4 traffic lights</h2><span class="pill" id="simTick">—</span></div>
+        <div class="bd">
+          <div class="lights" id="lights"></div>
+        </div>
+      </article>
+
+      <!-- Upload image of 4th intersection -->
+      <article class="card c-upload">
+        <div class="hd"><h2>Upload the image of the 4th intersection</h2></div>
+        <div class="bd">
+          <label class="drop" id="drop">
+            <div id="fileName" style="font-size:13px; color:var(--muted)">Drag & drop or click to upload</div>
+            <input id="fileInput" type="file" accept="image/*" />
+            <button class="btn" id="uploadBtn" disabled>Upload</button>
+          </label>
+          <div id="uploadMsg" style="margin-top:10px; font-size:13px; color:var(--muted)"></div>
+        </div>
+      </article>
+
+      <!-- Each traffic light waiting time -->
+      <article class="card c-wait">
+        <div class="hd"><h2>Avg waiting time</h2></div>
+        <div class="bd"><div style="font-size:36px; font-weight:800" id="waitAvg">—</div><div style="color:var(--muted); font-size:13px">seconds</div></div>
+      </article>
+
+      <!-- Time saved -->
+      <article class="card c-time">
+        <div class="hd"><h2>Time saved</h2></div>
+        <div class="bd"><div style="font-size:36px; font-weight:800; color:var(--ok)" id="timeSaved">—</div><div style="color:var(--muted); font-size:13px">seconds vs. baseline</div></div>
+      </article>
+
+      <!-- Emergency response rate -->
+      <article class="card c-emg">
+        <div class="hd"><h2>Emergency response rate</h2></div>
+        <div class="bd"><div style="font-size:36px; font-weight:800; color:var(--accent)" id="emgRate">—</div><div style="color:var(--muted); font-size:13px">% incidents prioritized</div></div>
+      </article>
+
+      <!-- AI Logs for decisions -->
+      <article class="card c-logs">
+        <div class="hd"><h2>AI Logs</h2><span class="pill">Streaming</span></div>
+        <div class="bd">
+          <div class="ticker" id="logs"></div>
+        </div>
+      </article>
+
+      <!-- Live Traffic update -->
+      <article class="card c-live">
+        <div class="hd"><h2>Live Traffic update</h2><span class="pill" id="liveStamp">—</span></div>
+        <div class="bd">
+          <div class="ticker" id="liveTicker"></div>
+        </div>
+      </article>
+
+      <!-- Diagnostics / Self-tests -->
+      <article class="card c-diag">
+        <div class="hd"><h2>Connectivity self‑test</h2><button class="btn" id="runTestsBtn">Run tests</button></div>
+        <div class="bd">
+          <div class="tests" id="tests"></div>
+          <div style="margin-top:10px; font-size:12px; color:var(--muted)">Tip: add <code>?mock=1</code> to the URL to force mock mode. Use <strong>Run tests</strong> to see which API paths resolve.</div>
+        </div>
+      </article>
+
+    </section>
+  </main>
+
+  <script>
+    // ===== Helpers =====
+    const $ = (s) => document.querySelector(s);
+    const el = (tag, attrs={}) => Object.assign(document.createElement(tag), attrs);
+    const fmt = (n) => new Intl.NumberFormat().format(n);
+
+    // ===== Config / Route resolution =====
+    // Some backends expose endpoints without the "/api" prefix. We'll try candidates and cache the working one.
+    const ROUTES = {
+      analytics: ['/api/traffic_analytics','/traffic_analytics'],
+      recent: ['/api/recent_intersection','/recent_intersection'],
+      sim: ['/api/live_simulation','/live_simulation'],
+      logs: ['/api/ai_logs','/ai_logs'],
+      upload: ['/api/upload_intersection','/upload_intersection']
+    };
+    const WORKING = {};
+    const params = new URLSearchParams(location.search);
+    let MOCK = params.has('mock');
+
+    const setStatus = (txt, ok=true)=>{
+      const pill = $('#status-pill');
+      pill.textContent = txt;
+      pill.style.background = ok ? 'linear-gradient(135deg, var(--ok), #34d399)' : 'linear-gradient(135deg, var(--danger), #f87171)';
+      pill.style.color = '#08101f';
+    }
+
+    async function tryFetch(url, opts){
+      const res = await fetch(url, opts);
+      if(!res.ok) throw new Error(res.status+': '+url);
+      return res.json();
+    }
+
+    async function apiGet(key){
+      if(MOCK) return mockData(key);
+      const candidates = WORKING[key] ? [WORKING[key]] : ROUTES[key] || [];
+      let lastErr;
+      for(const url of candidates){
+        try{
+          const data = await tryFetch(url);
+          WORKING[key] = url; // cache working route
+          return data;
+        }catch(e){ lastErr = e; }
+      }
+      // All candidates failed — enter mock mode so UI still works
+      setStatus('Mock mode (no API)', false);
+      MOCK = true;
+      return mockData(key);
+    }
+
+    async function apiUpload(file){
+      if(MOCK){ return {status:'success', filename:file.name, mock:true}; }
+      const candidates = WORKING.upload ? [WORKING.upload] : ROUTES.upload;
+      let lastErr;
+      for(const url of candidates){
+        try{
+          const fd = new FormData();
+          fd.append('image', file);
+          const res = await fetch(url, {method:'POST', body:fd});
+          if(!res.ok) throw new Error(res.status+': '+url);
+          WORKING.upload = url;
+          return res.json();
+        }catch(e){ lastErr = e; }
+      }
+      setStatus('Mock mode (no API)', false);
+      MOCK = true;
+      return {status:'success', filename:file.name, mock:true};
+    }
+
+    // ===== Charts =====
+    let analyticsChart, countsChart;
+    function initCharts(){
+      const aCtx = document.getElementById('analyticsChart');
+      analyticsChart = new Chart(aCtx, {
+        type:'line',
+        data:{labels:[], datasets:[{label:'Flow (vph)', data:[], tension:.35, fill:false}]},
+        options:{responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true}}}
+      });
+      const cCtx = document.getElementById('countsChart');
+      countsChart = new Chart(cCtx, {
+        type:'bar',
+        data:{labels:['Cars','Ambulances','Police','Fire Trucks'], datasets:[{label:'Count', data:[0,0,0,0]}]},
+        options:{responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true}}}
+      });
+    }
+
+    // ===== Lights UI =====
+    function renderLights(traffic){
+      const wrap = $('#lights');
+      wrap.innerHTML = '';
+      let sumWait = 0;
+      traffic.forEach(t => {
+        sumWait += (t.waiting_time || 0);
+        const box = el('div', {className:'light'});
+        const status = el('div', {className:'status'});
+        const bulb = el('span', {className:'bulb ' + (t.status || 'red')});
+        const title = el('div', {textContent:`Light ${t.id} • ${(t.status||'red').toUpperCase()}`});
+        status.append(bulb,title);
+        const meter = el('div', {className:'meter'});
+        const inner = el('span');
+        inner.style.width = Math.min(100, (t.waiting_time||0)) + '%';
+        meter.append(inner);
+        const time = el('div', {style:'font-size:12px; color:var(--muted);', textContent:`Waiting: ${t.waiting_time||0}s`});
+        box.append(status, meter, time);
+        wrap.append(box);
+      });
+      const avg = traffic.length ? (sumWait/traffic.length) : 0;
+      $('#waitAvg').textContent = Math.round(avg);
+    }
+
+    // ===== Vehicle mix list =====
+    function setMix(m){
+      const list = $('#mixList');
+      list.innerHTML = '';
+      const items = [
+        ['Cars', m.cars||0],
+        ['Ambulances', m.ambulances||0],
+        ['Police cars', m.police||0],
+        ['Fire trucks', m.fire_trucks||0]
+      ];
+      items.forEach(([k,v])=>{
+        const li = el('li');
+        li.style.padding = '10px 12px';
+        li.style.background = 'rgba(148,163,184,.06)';
+        li.style.border = '1px solid rgba(148,163,184,.1)';
+        li.style.borderRadius = '12px';
+        li.textContent = `${k}: ${fmt(v)}`;
+        list.append(li);
+      });
+      countsChart.data.datasets[0].data = items.map(i=>i[1]);
+      countsChart.update();
+    }
+
+    // ===== Logs & Ticker (non-intrusive scrolling + size cap) =====
+    function appendWithAutoScroll(box, text){
+      const atBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 5;
+      let lines = box.textContent.trim() ? box.textContent.trim().split("\n") : [];
+      lines.push(text);
+      if(lines.length > 100) lines = lines.slice(-100); // cap
+      box.textContent = lines.join("\n") + "\n";
+      if(atBottom) box.scrollTop = box.scrollHeight;
+    }
+    function pushLog(msg){
+      appendWithAutoScroll($('#logs'), `[${new Date().toLocaleTimeString()}] ${msg}`);
+    }
+    function pushLive(msg){
+      appendWithAutoScroll($('#liveTicker'), msg);
+      $('#liveStamp').textContent = new Date().toLocaleTimeString();
+    }
+
+    // ===== Mock data generator =====
+    function rnd(min,max){ return Math.round(min + Math.random()*(max-min)); }
+    function mockData(key){
+      switch(key){
+        case 'analytics':
+          return {traffic_flow: rnd(80,220), average_speed: rnd(25,70)};
+        case 'recent':
+          return {intersection_id: rnd(1,4), vehicles: rnd(5,60)};
+        case 'sim':
+          return {
+            traffic_lights:[
+              {id:1,status:['red','green','yellow'][rnd(0,2)], waiting_time:rnd(5,60)},
+              {id:2,status:['red','green','yellow'][rnd(0,2)], waiting_time:rnd(5,60)},
+              {id:3,status:['red','green','yellow'][rnd(0,2)], waiting_time:rnd(5,60)},
+              {id:4,status:['red','green','yellow'][rnd(0,2)], waiting_time:rnd(5,60)},
+            ],
+            time_saved:rnd(5,25),
+            emergency_response_rate:`${rnd(70,100)}%`,
+            vehicle_mix:{cars:rnd(20,90), ambulances:rnd(0,3), police:rnd(0,4), fire_trucks:rnd(0,2)}
+          };
+        case 'logs':
+          return {decision:'Adjusted phase for optimal flow (mock)', timestamp:new Date().toISOString()};
+        default:
+          return {};
+      }
+    }
+
+    // ===== API-driven refresh =====
+    async function refreshAll(){
+      try{
+        setStatus(MOCK ? 'Mock mode' : 'Online', !MOCK);
+
+        const analytics = await apiGet('analytics');
+        $('#avgSpeed').textContent = analytics.average_speed;
+        $('#trafficFlow').textContent = analytics.traffic_flow;
+        $('#trafficFlowPill').textContent = analytics.traffic_flow + ' vph';
+        const t = new Date().toLocaleTimeString();
+        analyticsChart.data.labels.push(t);
+        analyticsChart.data.datasets[0].data.push(analytics.traffic_flow);
+        if(analyticsChart.data.labels.length>20){analyticsChart.data.labels.shift(); analyticsChart.data.datasets[0].data.shift();}
+        analyticsChart.update();
+
+        const recent = await apiGet('recent');
+        $('#recentId').textContent = 'ID '+ recent.intersection_id;
+        $('#recentVehicles').textContent = recent.vehicles;
+
+        const sim = await apiGet('sim');
+        renderLights(sim.traffic_lights || []);
+        $('#timeSaved').textContent = sim.time_saved;
+        $('#emgRate').textContent = (sim.emergency_response_rate||'').toString().replace('%','') + '%';
+        $('#simTick').textContent = new Date().toLocaleTimeString();
+
+        const mix = sim.vehicle_mix || {cars: recent.vehicles || 0, ambulances: Math.floor((recent.vehicles||0)*.02), police: Math.floor((recent.vehicles||0)*.015), fire_trucks: Math.floor((recent.vehicles||0)*.008)};
+        setMix(mix);
+
+        const log = await apiGet('logs');
+        pushLog(log.timestamp + ' • ' + log.decision);
+
+        pushLive(`Flow ${analytics.traffic_flow} vph • Avg ${analytics.average_speed} km/h • Emergency ${$('#emgRate').textContent}`);
+      }catch(err){
+        console.error(err);
+        setStatus('API error', false);
+        pushLog('Error: '+ err.message);
+      }
+    }
+
+    // ===== Upload handling =====
+    const drop = $('#drop');
+    const fileInput = $('#fileInput');
+    const uploadBtn = $('#uploadBtn');
+    const fileName = $('#fileName');
+    const uploadMsg = $('#uploadMsg');
+
+    drop.addEventListener('click', ()=> fileInput.click());
+    drop.addEventListener('dragover', (e)=>{e.preventDefault(); drop.style.background='rgba(56,189,248,.08)';});
+    drop.addEventListener('dragleave', ()=>{drop.style.background='rgba(148,163,184,.05)'});
+    drop.addEventListener('drop', (e)=>{
+      e.preventDefault(); drop.style.background='rgba(148,163,184,.05)';
+      if(e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', ()=>{ if(fileInput.files?.[0]) handleFile(fileInput.files[0]); });
+
+    function handleFile(f){
+      fileName.textContent = f.name + ' • ' + Math.round(f.size/1024) + ' KB';
+      uploadBtn.disabled = false;
+      uploadMsg.textContent = '';
+    }
+    uploadBtn.addEventListener('click', async ()=>{
+      if(!fileInput.files?.[0]) return;
+      uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading…';
+      try{
+        const res = await apiUpload(fileInput.files[0]);
+        uploadMsg.textContent = 'Upload ' + (res.status==='success' ? 'successful' : 'failed') + (res.filename? ' • '+res.filename : '') + (res.mock? ' (mock)' : '');
+        pushLog('Uploaded 4th intersection image: ' + (res.filename||''));
+        setStatus(MOCK ? 'Mock mode' : 'Online', !MOCK);
+      }catch(err){
+        uploadMsg.textContent = 'Upload failed: ' + err.message;
+        setStatus('API error', false);
+      }finally{
+        uploadBtn.textContent = 'Upload';
+        uploadBtn.disabled = false;
+      }
+    });
+
+    // ===== Diagnostics / Self-tests =====
+    const TESTS = [
+      {key:'analytics', label:'Traffic analytics', expects:['traffic_flow','average_speed']},
+      {key:'recent', label:'Recent intersection', expects:['intersection_id','vehicles']},
+      {key:'sim', label:'Live simulation', expects:['traffic_lights','time_saved','emergency_response_rate']},
+      {key:'logs', label:'AI logs', expects:['decision','timestamp']}
+    ];
+
+    async function runTests(){
+      const host = $('#tests');
+      host.innerHTML = '';
+      for(const t of TESTS){
+        const row = el('div', {className:'test'});
+        const name = el('div', {textContent:t.label});
+        const badge = el('span', {className:'badge', textContent:'…'});
+        row.append(name,badge); host.append(row);
+        try{
+          const data = await apiGet(t.key);
+          const ok = t.expects.every(k=> Object.prototype.hasOwnProperty.call(data,k));
+          badge.textContent = ok ? 'PASS' : 'MISSING FIELDS';
+          badge.className = 'badge ' + (ok ? 'pass' : 'fail');
+        }catch(e){
+          badge.textContent = 'FAIL';
+          badge.className = 'badge fail';
+        }
+      }
+    }
+    $('#runTestsBtn').addEventListener('click', runTests);
+
+    // ===== Boot =====
+    initCharts();
+    refreshAll();
+    // Poll every 5 seconds (adjust as needed)
+    setInterval(refreshAll, 5000);
+    // Run tests once on load (non-blocking)
+    setTimeout(runTests, 100);
+  </script>
+</body>
+</html>

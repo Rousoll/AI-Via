@@ -3,6 +3,10 @@ from werkzeug.utils import secure_filename
 import os
 import sys
 import random
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 
 # --- Path Configuration ---
 # Get the base directory of app.py, which is the project root
@@ -172,5 +176,81 @@ if __name__ == "__main__":
     print(f"Simulation Data Folder (if used): {DATASET_SIMULATION_IMAGE_DIR}")
     # Remove or comment out the line below that caused the NameError
     # print(f"Ensure your AI model (best.pt) is trained and located correctly in 'runs/detect/{TRAINED_WEIGHTS_FOLDER_NAME}/weights/'.") 
+    
+    # === Aliases for Dashboard Frontend ===
+
+# Dashboard expects /api/traffic_analytics
+@app.route('/api/traffic_analytics')
+def traffic_analytics():
+    # Reuse your existing live_stats() route
+    return live_stats()
+
+# Dashboard expects /api/recent_intersection
+@app.route('/api/recent_intersection')
+def recent_intersection():
+    # For now, return simulation info (reuse start_simulation)
+    return start_simulation()
+
+# Dashboard expects /api/live_simulation
+@app.route('/api/live_simulation')
+def live_simulation_alias():
+    # Alias to your start_simulation route
+    return start_simulation()
+
+# Dashboard expects /api/ai_logs
+@app.route('/api/ai_logs')
+def ai_logs():
+    # Mock AI logs for frontend
+    return jsonify({
+        "logs": [
+            "AI-Via system initialized",
+            "Traffic simulation running...",
+            "Processing live vehicle detection..."
+        ]
+    })
+
+# Dashboard expects /api/upload_intersection
+@app.route('/api/upload_intersection', methods=['POST'])
+def upload_intersection_alias():
+    # Reuse your upload_image() route
+    return upload_image()
+# === Aliases for Dashboard Frontend ===
+
+# === Aliases for Dashboard Frontend ===
+
+@app.route('/api/traffic_analytics')
+def traffic_analytics():
+    return live_stats()  # reuse your existing live-stats
+
+@app.route('/api/recent_intersection')
+def recent_intersection():
+    return start_simulation()  # reuse your simulation route
+
+@app.route('/api/live_simulation')
+def live_simulation_alias():
+    return start_simulation()
+
+@app.route('/api/ai_logs')
+def ai_logs():
+    return jsonify({
+        "logs": [
+            "AI-Via system initialized",
+            "Traffic simulation running...",
+            "Processing live vehicle detection..."
+        ]
+    })
+
+@app.route('/api/upload_intersection', methods=['POST'])
+def upload_intersection_alias():
+    return upload_image()
+
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    print(f"--- Starting Flask Application ---")
+    print(f"Project Root: {PROJECT_ROOT_DIR}")
+    print(f"Uploads Folder: {UPLOAD_FOLDER}")
+    print(f"Prediction Output Folder: {PREDICTION_STATIC_BASE_PATH}")
+    print(f"Simulation Data Folder (if used): {DATASET_SIMULATION_IMAGE_DIR}")
     
     app.run(host='0.0.0.0', port=5050, debug=True)
